@@ -377,6 +377,7 @@ if __name__ == '__main__':
     # train1_set = np.load("checkpoint/train_set.npy")
     # test1_set = np.load("checkpoint/test_set.npy")
 
+
     tr_set = prep_dataloader(train_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
     tt_set = prep_dataloader(train_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
     model = Faster_RCNN()
