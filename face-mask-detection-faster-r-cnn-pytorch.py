@@ -18,6 +18,8 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import DataLoader, Dataset
+from sklearn.model_selection import train_test_split
+import matplotlib.patches as patches
 import os 
 from PIL import Image
 import random
@@ -169,8 +171,8 @@ class image_dataset(Dataset):
 def collate_fn(batch):
     return tuple(zip(*batch))
 
-def prep_dataloader(dir_path,xml_path,mode,batch_size, n_jobs):
-    mask_dataset = image_dataset(file_list, dir_path, xml_path)
+def prep_dataloader(mask_dataset,xml_path,mode,batch_size, n_jobs):
+
     mask_loader = DataLoader(mask_dataset,
                              batch_size=batch_size,
                              shuffle=(mode == 'train'),
@@ -275,6 +277,29 @@ def single_img_predict(img, model,nm_thrs = 0.3, score_thrs=0.8):
     return test_img, test_boxes, test_labels
 
 
+def plot_img(img, predict, annotation):
+    fig, ax = plt.subplots(1, 2)
+    img = img.cpu().data
+
+    ax[0].imshow(img.permute(1, 2, 0))  # rgb, w, h => w, h, rgb
+    ax[1].imshow(img.permute(1, 2, 0))
+    ax[0].set_title("real")
+    ax[1].set_title("predict")
+
+    for box in annotation["boxes"]:
+        xmin, ymin, xmax, ymax = box
+        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor='r',
+                                 facecolor='none')
+        ax[0].add_patch(rect)
+
+    for box in predict["boxes"]:
+        xmin, ymin, xmax, ymax = box
+        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor='r',
+                                 facecolor='none')
+        ax[1].add_patch(rect)
+
+    plt.savefig()
+    #plt.show()
 # - Lets pick an image from the training set and compare the prediction with ground truth
 
 # In[ ]:
@@ -325,8 +350,8 @@ if __name__ == '__main__':
     device = get_device()
     print(device)
     config = {
-        'num_epochs': 30,  # maximum number of epochs
-        'batch_size': 2,  # mini-batch size for dataloader
+        'num_epochs': 5,  # maximum number of epochs
+        'batch_size': 1,  # mini-batch size for dataloader
         'n_jobs':2,
         'optimizer': 'SGD',  # optimization algorithm (optimizer in torch.optim)
         #'optim_hparas': {  # hyper-parameters for the optimizer (depends on which optimizer you are using)
@@ -342,7 +367,30 @@ if __name__ == '__main__':
     file_list = os.listdir(config['dir_path'])
     # How many image files?
     print('There are total {} images.'.format(len(file_list)))
+    full_dataset = image_dataset(file_list, config['dir_path'], config['xml_path'])
 
-    tr_set = prep_dataloader(config['dir_path'],config['xml_path'],config['num_epochs'],config['batch_size'], config['n_jobs'])
+    train_size = int(0.8 * len(full_dataset)) #0.8
+    test_size = len(full_dataset) - train_size #0.2
+    train_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, test_size])
+
+    tr_set = prep_dataloader(train_set,config['xml_path'],'train',config['batch_size'], config['n_jobs'])
+    tt_set = prep_dataloader(train_set, config['xml_path'], 'test', config['batch_size'],config['n_jobs'])
     model=Faster_RCNN()
     train(tr_set,model,config,device)
+
+
+    model.eval()
+
+    with torch.no_grad():
+        for imgs, annotations in tt_set:
+            imgs = list(img.to(device) for img in imgs)
+            annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
+
+            preds = model(imgs)
+
+            for i in range(len(imgs)):
+                plot_img(imgs[i], preds[i], annotations[i])
+                # plot_img(imgs[i], annotations[i])
+                s=i+".png"
+                plt.savefig("../data_set/predict/"+s)
+            break
