@@ -243,7 +243,7 @@ def train(tr_set, model, config, device):
         epoch_loss = np.mean(loss_sub_list)
         if epoch_loss < min_loss:
             print("saving model")
-            torch.save(model.state_dict(), '../checkpoint/model_0214.pth')
+            torch.save(model.state_dict(), 'checkpoint/model.pth')
             min_loss = epoch_loss
         loss_list.append(epoch_loss)
         print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
@@ -295,7 +295,7 @@ def plot_img(img, predict, annotation):
                                  facecolor='none')
         ax[1].add_patch(rect)
 
-    plt.savefig()
+    #plt.savefig()
     # plt.show()
 
 
