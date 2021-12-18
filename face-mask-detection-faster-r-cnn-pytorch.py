@@ -20,7 +20,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 import matplotlib.patches as patches
-import os 
+import os
 from PIL import Image
 import random
 import xml.etree.ElementTree as ET
@@ -29,9 +29,6 @@ import requests
 
 
 # In[2]:
-
-
-
 
 
 # ### Create 2 helper functions
@@ -57,8 +54,8 @@ def read_annot(file_name, xml_dir):
     """
     bbox = []
     labels = []
-    
-    annot_path = os.path.join(xml_dir, file_name[:-3]+'xml')
+
+    annot_path = os.path.join(xml_dir, file_name[:-3] + 'xml')
     tree = ET.parse(annot_path)
     root = tree.getroot()
     for boxes in root.iter('object'):
@@ -67,17 +64,18 @@ def read_annot(file_name, xml_dir):
         ymax = int(boxes.find("bndbox/ymax").text)
         xmax = int(boxes.find("bndbox/xmax").text)
         label = boxes.find('name').text
-        bbox.append([xmin,ymin,xmax,ymax])
+        bbox.append([xmin, ymin, xmax, ymax])
         if label == 'with_mask':
             label_idx = 2
         else:
             label_idx = 1
         labels.append(label_idx)
-        
+
     return bbox, labels
 
+
 # help function for drawing bounding boxes on image
-def draw_boxes(img, boxes,labels, thickness=1):
+def draw_boxes(img, boxes, labels, thickness=1):
     """
     Function to draw bounding boxes
     Input:
@@ -87,13 +85,13 @@ def draw_boxes(img, boxes,labels, thickness=1):
     
     """
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    for box,label in zip(boxes,labels):
+    for box, label in zip(boxes, labels):
         box = [int(x) for x in box]
         if label == 2:
-            color = (0,225,0) # green
+            color = (0, 225, 0)  # green
         elif label == 1:
-            color = (0,0,225) # red
-        cv2.rectangle(img, (box[0],box[1]),(box[2],box[3]),color,thickness)
+            color = (0, 0, 225)  # red
+        cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), color, thickness)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -128,7 +126,7 @@ class image_dataset(Dataset):
         self.image_list = image_list
         self.image_dir = image_dir
         self.xml_dir = xml_dir
-       
+
     def __getitem__(self, idx):
         """
         Load the image
@@ -144,20 +142,20 @@ class image_dataset(Dataset):
         bbox, labels = read_annot(img_name, self.xml_dir)
         boxes = torch.as_tensor(bbox, dtype=torch.float32)
         labels = torch.as_tensor(labels, dtype=torch.int64)
-        
-        area = (boxes[:,2] - boxes[:,0]) * (boxes[:,3] - boxes[:,1])
+
+        area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
         area = torch.as_tensor(area, dtype=torch.float32)
         iscrowd = torch.zeros((len(bbox),), dtype=torch.int64)
-        
+
         target = {}
-        
+
         target['boxes'] = boxes
         target['labels'] = labels
         target['image_id'] = torch.tensor([idx])
         target['area'] = area
         target['iscrowed'] = iscrowd
-        return img , target
-                    
+        return img, target
+
     def __len__(self):
         return len(self.image_list)
 
@@ -167,12 +165,11 @@ class image_dataset(Dataset):
 # In[6]:
 
 
-
 def collate_fn(batch):
     return tuple(zip(*batch))
 
-def prep_dataloader(mask_dataset,xml_path,mode,batch_size, n_jobs):
 
+def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
     mask_loader = DataLoader(mask_dataset,
                              batch_size=batch_size,
                              shuffle=(mode == 'train'),
@@ -194,7 +191,7 @@ def prep_dataloader(mask_dataset,xml_path,mode,batch_size, n_jobs):
 
 # Setting up the model
 def Faster_RCNN():
-    num_classes = 3 # background, without_mask, with_mask
+    num_classes = 3  # background, without_mask, with_mask
 
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -211,10 +208,10 @@ def Faster_RCNN():
 
 # In[ ]:
 
-def train(tr_set,model,config,device):
-    num_epochs=config['num_epochs']
+def train(tr_set, model, config, device):
+    num_epochs = config['num_epochs']
 
-    #setup optimizer
+    # setup optimizer
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, config['lr'], config['momentum'], config['weight_decay'])
 
@@ -222,12 +219,12 @@ def train(tr_set,model,config,device):
     loss_list = []
     min_loss = 1000
     for epoch in range(num_epochs):
-        print('Starting training....{}/{}'.format(epoch+1, num_epochs))
+        print('Starting training....{}/{}'.format(epoch + 1, num_epochs))
         loss_sub_list = []
         start = time.time()
         for images, targets in tr_set:
             images = list(image.to(device) for image in images)
-            targets = [{k:v.to(device) for k,v in t.items()} for t in targets]
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
             model.train()
             loss_dict = model(images, targets)
@@ -239,41 +236,41 @@ def train(tr_set,model,config,device):
             optimizer.zero_grad()
             losses.backward()
             optimizer.step()
-            #lr_scheduler.step()
+            # lr_scheduler.step()
         end = time.time()
 
-        #print the loss of epoch and save
+        # print the loss of epoch and save
         epoch_loss = np.mean(loss_sub_list)
-        if epoch_loss<min_loss:
+        if epoch_loss < min_loss:
             print("saving model")
             torch.save(model.state_dict(), '../checkpoint/model_0214.pth')
             min_loss = epoch_loss
         loss_list.append(epoch_loss)
-        print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end-start))
+        print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
 
 
 # # Prediction
 
 # helper function for single image prediction
-def single_img_predict(img, model,nm_thrs = 0.3, score_thrs=0.8):
+def single_img_predict(img, model, nm_thrs=0.3, score_thrs=0.8):
     test_img = transforms.ToTensor()(img)
     model.eval()
-    
+
     with torch.no_grad():
         predictions = model(test_img.unsqueeze(0).to(device))
-        
-    test_img = test_img.permute(1,2,0).numpy()
-    
+
+    test_img = test_img.permute(1, 2, 0).numpy()
+
     # non-max supression
-    keep_boxes = torchvision.ops.nms(predictions[0]['boxes'].cpu(),predictions[0]['scores'].cpu(),nm_thrs)
-    
+    keep_boxes = torchvision.ops.nms(predictions[0]['boxes'].cpu(), predictions[0]['scores'].cpu(), nm_thrs)
+
     # Only display the bounding boxes which higher than the threshold
     score_filter = predictions[0]['scores'].cpu().numpy()[keep_boxes] > score_thrs
-    
+
     # get the filtered result
     test_boxes = predictions[0]['boxes'].cpu().numpy()[keep_boxes][score_filter]
     test_labels = predictions[0]['labels'].cpu().numpy()[keep_boxes][score_filter]
-    
+
     return test_img, test_boxes, test_labels
 
 
@@ -299,7 +296,9 @@ def plot_img(img, predict, annotation):
         ax[1].add_patch(rect)
 
     plt.savefig()
-    #plt.show()
+    # plt.show()
+
+
 # - Lets pick an image from the training set and compare the prediction with ground truth
 
 # In[ ]:
@@ -352,16 +351,16 @@ if __name__ == '__main__':
     config = {
         'num_epochs': 5,  # maximum number of epochs
         'batch_size': 1,  # mini-batch size for dataloader
-        'n_jobs':2,
+        'n_jobs': 2,
         'optimizer': 'SGD',  # optimization algorithm (optimizer in torch.optim)
-        #'optim_hparas': {  # hyper-parameters for the optimizer (depends on which optimizer you are using)
-            'lr': 0.001,  # learning rate of SGD
-            'momentum': 0.9,  # momentum for SGD
-        'weight_decay':0.0005,
-        #},
+        # 'optim_hparas': {  # hyper-parameters for the optimizer (depends on which optimizer you are using)
+        'lr': 0.001,  # learning rate of SGD
+        'momentum': 0.9,  # momentum for SGD
+        'weight_decay': 0.0005,
+        # },
         'early_stop': 200,  # early stopping epochs (the number epochs since your model's last improvement)
-        'dir_path' : '../data_set/face_mask_detection/IMAGES',
-        'xml_path' : '../data_set/face_mask_detection/ANNOTATIONS',
+        'dir_path': '../data_set/face_mask_detection/IMAGES',
+        'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
     }
     file_list = os.listdir(config['dir_path'])
@@ -369,15 +368,19 @@ if __name__ == '__main__':
     print('There are total {} images.'.format(len(file_list)))
     full_dataset = image_dataset(file_list, config['dir_path'], config['xml_path'])
 
-    train_size = int(0.8 * len(full_dataset)) #0.8
-    test_size = len(full_dataset) - train_size #0.2
+    train_size = int(0.8 * len(full_dataset))  # 0.8
+    test_size = len(full_dataset) - train_size  # 0.2
     train_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, test_size])
+    np.save('checkpoint/train_set.npy', train_set)
+    np.save('checkpoint/test_set.npy', test_set)
+    # print(type(train_set))
+    # train1_set = np.load("checkpoint/train_set.npy")
+    # test1_set = np.load("checkpoint/test_set.npy")
 
-    tr_set = prep_dataloader(train_set,config['xml_path'],'train',config['batch_size'], config['n_jobs'])
-    tt_set = prep_dataloader(train_set, config['xml_path'], 'test', config['batch_size'],config['n_jobs'])
-    model=Faster_RCNN()
-    train(tr_set,model,config,device)
-
+    tr_set = prep_dataloader(train_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
+    tt_set = prep_dataloader(train_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
+    model = Faster_RCNN()
+    train(tr_set, model, config, device)
 
     model.eval()
 
@@ -391,6 +394,6 @@ if __name__ == '__main__':
             for i in range(len(imgs)):
                 plot_img(imgs[i], preds[i], annotations[i])
                 # plot_img(imgs[i], annotations[i])
-                s=i+".png"
-                plt.savefig("../data_set/predict/"+s)
+                s = i + ".png"
+                plt.savefig("../data_set/predict/" + s)
             break
