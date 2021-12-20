@@ -10,6 +10,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import matplotlib.patches as patches
 import xml.etree.ElementTree as ET
 
+
 def read_annot(file_name, xml_dir):
     """
     Function used to get the bounding boxes and labels from the xml file
@@ -41,6 +42,7 @@ def read_annot(file_name, xml_dir):
 
     return bbox, labels
 
+
 # help function for drawing bounding boxes on image
 def draw_boxes(img, boxes, labels, thickness=1):
     """
@@ -61,6 +63,7 @@ def draw_boxes(img, boxes, labels, thickness=1):
         cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), color, thickness)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+
 def get_device():
     ''' Get device (if GPU is available, use GPU) '''
     return 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -77,6 +80,7 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
                              num_workers=n_jobs,
                              collate_fn=collate_fn)
     return mask_loader
+
 
 def Faster_RCNN(device):
     num_classes = 3  # background, without_mask, with_mask
@@ -112,25 +116,38 @@ def single_img_predict(img, model, nm_thrs=0.3, score_thrs=0.8):
 
 
 def plot_img(img, predict, annotation):
+    plt.close()
     fig, ax = plt.subplots(1, 2)
     img = img.cpu().data
 
     ax[0].imshow(img.permute(1, 2, 0))  # rgb, w, h => w, h, rgb
     ax[1].imshow(img.permute(1, 2, 0))
-    ax[0].set_title("real")
+    ax[0].set_title("ground_truth")
     ax[1].set_title("predict")
 
-    for box in annotation["boxes"]:
-        xmin, ymin, xmax, ymax = box
-        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor='r',
+    anno_boxs = annotation["boxes"]
+    anno_labels = annotation["labels"]
+    for i in range(len(anno_boxs)):
+        xmin, ymin, xmax, ymax = anno_boxs[i]
+        if anno_labels[i] == 2:
+            color = 'g'
+        elif anno_labels[i] == 1:
+            color = 'r'
+        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor=color,
                                  facecolor='none')
         ax[0].add_patch(rect)
-
-    for box in predict["boxes"]:
-        xmin, ymin, xmax, ymax = box
-        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor='r',
+    pre_boxs = predict["boxes"]
+    pre_labels = predict["labels"]
+    for i in range(len(pre_boxs)):
+        xmin, ymin, xmax, ymax = pre_boxs[i]
+        if pre_labels[i] == 2:
+            color = 'g'
+        elif pre_labels[i] == 1:
+            color = 'r'
+        rect = patches.Rectangle((xmin, ymin), (xmax - xmin), (ymax - ymin), linewidth=1, edgecolor=color,
                                  facecolor='none')
         ax[1].add_patch(rect)
+
 
 if __name__ == '__main__':
     config = {
@@ -161,33 +178,33 @@ if __name__ == '__main__':
     tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
 
     with torch.no_grad():
-        a=0
+        a = 0
         for imgs, annotations in tt_set:
             imgs = list(img.to(device) for img in imgs)
             annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
 
-            preds = model(imgs)
             # Prediction
-            test_img, test_boxes, test_labels = single_img_predict(imgs)
-            test_output = draw_boxes(test_img, test_boxes, test_labels)
+            preds = model(imgs)
+
+            # test_img, test_boxes, test_labels = single_img_predict(test_img,model)
+            # test_output = draw_boxes(test_img, test_boxes, test_labels)
 
             # Draw the bounding box of ground truth
-            bbox, labels = read_annot(file_list[idx], config['xml_path'])
+            # bbox, labels = read_annot(file_list[idx], config['xml_path'])
             # draw bounding boxes on the image
-            gt_output = draw_boxes(test_img, bbox, labels)
-
+            # gt_output = draw_boxes(test_img, annotations[0]['boxes'], annotations[0]['label'])
 
             # for i in range(2):
-            # plot_img(imgs[0], preds[0], annotations[0])
-            # plot_img(imgs[i], annotations[i])
+            plot_img(imgs[0], preds[0], annotations[0])
             # Display the result
 
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-            ax1.imshow(test_output)
-            ax1.set_xlabel('Prediction')
-            ax2.imshow(gt_output)
-            ax2.set_xlabel('Ground Truth')
+            # display result
+            # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+            # ax1.imshow(test_output)
+            # ax1.set_xlabel('Prediction')
+            # ax2.imshow(gt_output)
+            # ax2.set_xlabel('Ground Truth')
 
             s = "%d.png" % a
             plt.savefig("../data_set/predict/" + s)
-            a=a+1
+            a = a + 1
