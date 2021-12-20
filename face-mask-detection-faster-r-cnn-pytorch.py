@@ -383,18 +383,3 @@ if __name__ == '__main__':
     model = Faster_RCNN()
     train(tr_set, model, config, device)
 
-    model.eval()
-
-    with torch.no_grad():
-        for imgs, annotations in tt_set:
-            imgs = list(img.to(device) for img in imgs)
-            annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
-
-            preds = model(imgs)
-
-            for i in range(len(imgs)):
-                plot_img(imgs[i], preds[i], annotations[i])
-                # plot_img(imgs[i], annotations[i])
-                s = i + ".png"
-                plt.savefig("../data_set/predict/" + s)
-            break
