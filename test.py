@@ -176,6 +176,7 @@ if __name__ == '__main__':
             # draw bounding boxes on the image
             gt_output = draw_boxes(test_img, bbox, labels)
 
+
             # for i in range(2):
             # plot_img(imgs[0], preds[0], annotations[0])
             # plot_img(imgs[i], annotations[i])
