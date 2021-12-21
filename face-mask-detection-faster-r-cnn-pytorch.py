@@ -301,53 +301,6 @@ def plot_img(img, predict, annotation):
     #plt.savefig()
     # plt.show()
 
-
-# - Lets pick an image from the training set and compare the prediction with ground truth
-
-# In[ ]:
-
-
-# #idx = random.randint(1,len(file_list))
-# idx = 210
-# test_img = Image.open(os.path.join(dir_path,file_list[idx])).convert('RGB')
-#
-# # Prediction
-# test_img, test_boxes, test_labels = single_img_predict(test_img)
-# test_output = draw_boxes(test_img, test_boxes,test_labels)
-#
-# # Draw the bounding box of ground truth
-# bbox, labels  = read_annot(file_list[idx], xml_path)
-# #draw bounding boxes on the image
-# gt_output = draw_boxes(test_img, bbox,labels)
-#
-# # Display the result
-# fig, (ax1,ax2) = plt.subplots(1,2,figsize=(15,6))
-# ax1.imshow(test_output)
-# ax1.set_xlabel('Prediction')
-# ax2.imshow(gt_output)
-# ax2.set_xlabel('Ground Truth')
-# plt.show()
-
-
-# - The model has detected one more face (the Buddha).
-
-# ### Now try the detector on image from internet
-
-# In[ ]:
-
-
-# url = 'https://assets.weforum.org/article/image/yv_SffigotevWgXLOTBsbybWzDlztGjjJM1mDWSqV8c.jpg'
-# test_img = Image.open(requests.get(url, stream=True).raw).convert('RGB')
-#
-# test_img, test_boxes, test_labels = single_img_predict(test_img)
-#
-# # The image size is so large, so we increase the thickness of the bounding box
-# test_output = draw_boxes(test_img, test_boxes,test_labels, thickness=20)
-#
-# plt.axis('off')
-# plt.imshow(test_output)
-
-
 if __name__ == '__main__':
     device = get_device()
     print(device)
@@ -361,7 +314,7 @@ if __name__ == '__main__':
         'momentum': 0.9,  # momentum for SGD
         'weight_decay': 0.0005,
         # },
-        'early_stop': 200,  # early stopping epochs (the number epochs since your model's last improvement)
+        'early_stop': 4,  # early stopping epochs (the number epochs since your model's last improvement)
         'dir_path': '../data_set/face_mask_detection/IMAGES',
         'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
