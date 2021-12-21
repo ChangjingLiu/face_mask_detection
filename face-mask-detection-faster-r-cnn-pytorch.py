@@ -222,11 +222,14 @@ def train(tr_set, model, config, device):
         print('Starting training....{}/{}'.format(epoch + 1, num_epochs))
         loss_sub_list = []
         start = time.time()
+        model.train()
+        i=0
+        epoch_loss = 0
         for images, targets in tr_set:
+            i+=1
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-            model.train()
             loss_dict = model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
             loss_value = losses.item()
@@ -349,7 +352,7 @@ if __name__ == '__main__':
     device = get_device()
     print(device)
     config = {
-        'num_epochs': 5,  # maximum number of epochs
+        'num_epochs': 30,  # maximum number of epochs
         'batch_size': 1,  # mini-batch size for dataloader
         'n_jobs': 2,
         'optimizer': 'SGD',  # optimization algorithm (optimizer in torch.optim)
