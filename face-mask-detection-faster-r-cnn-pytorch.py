@@ -283,6 +283,7 @@ def dev(dv_set, model, device):
     total_loss = total_loss / len(dv_set.dataset)              # compute averaged loss
 
     return total_loss
+
 # # Prediction
 
 # helper function for single image prediction
