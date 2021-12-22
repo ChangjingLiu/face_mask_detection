@@ -4,7 +4,8 @@ import cv2
 import numpy as np
 import torch
 import torchvision
-from matplotlib import pyplot as plt, transforms
+from matplotlib import pyplot as plt
+from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import matplotlib.patches as patches
@@ -138,6 +139,7 @@ def plot_img(img, predict, annotation):
         ax[0].add_patch(rect)
     pre_boxs = predict["boxes"]
     pre_labels = predict["labels"]
+    pre_scores = predict["scores"]
     for i in range(len(pre_boxs)):
         xmin, ymin, xmax, ymax = pre_boxs[i]
         if pre_labels[i] == 2:
@@ -186,7 +188,7 @@ if __name__ == '__main__':
             # Prediction
             preds = model(imgs)
 
-            # test_img, test_boxes, test_labels = single_img_predict(test_img,model)
+            # test_img, test_boxes, test_labels = single_img_predict(imgs,model)
             # test_output = draw_boxes(test_img, test_boxes, test_labels)
 
             # Draw the bounding box of ground truth

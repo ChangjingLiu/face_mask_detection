@@ -206,9 +206,9 @@ def Faster_RCNN():
 
 # Setting the optimizer, lr_scheduler, epochs
 
-# In[ ]:
 
-def train(tr_set, model, config, device):
+# training
+def train(tr_set, vd_set, model, config, device):
     num_epochs = config['num_epochs']
 
     # setup optimizer
@@ -217,7 +217,8 @@ def train(tr_set, model, config, device):
 
     # Main training function
     loss_list = []
-    min_loss = 1000
+    early_stop_cnt = 0
+    min_mse = 1000
     for epoch in range(num_epochs):
         print('Starting training....{}/{}'.format(epoch + 1, num_epochs))
         loss_sub_list = []
@@ -242,16 +243,46 @@ def train(tr_set, model, config, device):
             # lr_scheduler.step()
         end = time.time()
 
-        # print the loss of epoch and save
         epoch_loss = np.mean(loss_sub_list)
-        if epoch_loss < min_loss:
-            print("saving model")
+
+        # After each epoch, test your model on the validation (development) set.
+        dev_mse = dev(dv_set, model, device)
+        if dev_mse < min_mse:
+            min_mse = dev_mse
             torch.save(model.state_dict(), 'checkpoint/model.pth')
-            min_loss = epoch_loss
-        loss_list.append(epoch_loss)
-        print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
+            print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(min_mse, end - start))
+            early_stop_cnt = 0
+        else:
+            early_stop_cnt += 1
+        if early_stop_cnt > config['early_stop']:
+            # Stop training if your model stops improving for "config['early_stop']" epochs.
+            break
+        # print the loss of epoch and save
+        # epoch_loss = np.mean(loss_sub_list)
+        # if epoch_loss < min_mse:
+        #     print("saving model")
+        #     torch.save(model.state_dict(), 'checkpoint/model.pth')
+        #     min_mse = epoch_loss
+        # loss_list.append(epoch_loss)
+        # print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
 
+# validation
+def dev(dv_set, model, device):
+    # model.eval()                                # set model to evalutation mode
+    total_loss = 0
+    for imgs, annotations in dv_set:                         # iterate through the dataloader
+        imgs = list(img.to(device) for img in imgs)
+        annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
+        # x, y = x.to(device), y.to(device)       # move data to device (cpu/cuda)
+        with torch.no_grad():                   # disable gradient calculation
+            # pred = model(imgs)                     # forward pass (compute output)
+            mse_loss = model(imgs, annotations)  # compute loss
+        # total_loss += mse_loss.detach().cpu().item() * len(imgs)  # accumulate loss
+        total_loss = sum(loss for loss in mse_loss.values())
+        loss_value = total_loss.item()
+    total_loss = total_loss / len(dv_set.dataset)              # compute averaged loss
 
+    return total_loss
 # # Prediction
 
 # helper function for single image prediction
@@ -361,7 +392,7 @@ if __name__ == '__main__':
         'momentum': 0.9,  # momentum for SGD
         'weight_decay': 0.0005,
         # },
-        'early_stop': 200,  # early stopping epochs (the number epochs since your model's last improvement)
+        'early_stop': 5,  # early stopping epochs (the number epochs since your model's last improvement)
         'dir_path': '../data_set/face_mask_detection/IMAGES',
         'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
@@ -371,18 +402,19 @@ if __name__ == '__main__':
     print('There are total {} images.'.format(len(file_list)))
     full_dataset = image_dataset(file_list, config['dir_path'], config['xml_path'])
 
-    train_size = int(0.8 * len(full_dataset))  # 0.8
-    test_size = len(full_dataset) - train_size  # 0.2
-    train_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, test_size])
+    train_size = int(0.6 * len(full_dataset))  # 0.6
+    valid_size = int(0.2 * len(full_dataset))  # 0.2
+    test_size = len(full_dataset) - train_size - valid_size  # 0.2
+    train_set, valid_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, valid_size, test_size])
     np.save('checkpoint/train_set.npy', train_set)
     np.save('checkpoint/test_set.npy', test_set)
     # print(type(train_set))
     # train1_set = np.load("checkpoint/train_set.npy")
     # test1_set = np.load("checkpoint/test_set.npy")
 
-
     tr_set = prep_dataloader(train_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
-    tt_set = prep_dataloader(train_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
+    dv_set = prep_dataloader(valid_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
+    # tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
     model = Faster_RCNN()
-    train(tr_set, model, config, device)
+    train(tr_set, dv_set, model, config, device)
 
