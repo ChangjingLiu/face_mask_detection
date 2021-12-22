@@ -141,7 +141,11 @@ def plot_img(img, predict, annotation):
     pre_labels = predict["labels"]
     pre_scores = predict["scores"]
     for i in range(len(pre_boxs)):
+        if pre_scores[i] < 0.8:
+            continue
+
         xmin, ymin, xmax, ymax = pre_boxs[i]
+
         if pre_labels[i] == 2:
             color = 'g'
         elif pre_labels[i] == 1:
