@@ -28,6 +28,7 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
     return mask_loader
 
 
+
 def Faster_RCNN(device):
     num_classes = 3  # background, without_mask, with_mask
 
