@@ -135,7 +135,6 @@ class image_dataset(Dataset):
         img_path = os.path.join(self.image_dir, img_name)
         img = Image.open(img_path).convert('RGB')
         img = transforms.ToTensor()(img)
-
         """
         build the target dict
         """
@@ -193,7 +192,9 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
 def Faster_RCNN():
     num_classes = 3  # background, without_mask, with_mask
 
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
+    pre = torch.load('checkpoint/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth')
+    model.load_state_dict(pre)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
@@ -250,10 +251,10 @@ def train(tr_set, vd_set, model, config, device):
         loss_list.append(epoch_loss)
 
         # After each epoch, test your model on the validation (development) set.
-        dev_mse = dev(dv_set, model, device)
-        dev_list.append(dev_mse)
-        if dev_mse < min_mse:
-            min_mse = dev_mse
+        # dev_mse = dev(dv_set, model, device)
+        # dev_list.append(dev_mse)
+        if epoch_loss < min_mse:
+            min_mse = epoch_loss
             torch.save(model.state_dict(), 'checkpoint/model.pth')
             print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(min_mse, end - start))
             early_stop_cnt = 0
@@ -284,7 +285,7 @@ def train(tr_set, vd_set, model, config, device):
 
 # validation
 def dev(dv_set, model, device):
-    # model.eval()                                # set model to evalutation mode
+    model.eval()                                # set model to evalutation mode
     total_loss = 0
     loss_sub_list = []
     for imgs, annotations in dv_set:  # iterate through the dataloader
