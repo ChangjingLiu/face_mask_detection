@@ -217,17 +217,20 @@ def train(tr_set, vd_set, model, config, device):
 
     # Main training function
     loss_list = []
+    dev_list = []
     early_stop_cnt = 0
     min_mse = 1000
+    cnt_epoch = 0
     for epoch in range(num_epochs):
+        cnt_epoch = epoch + 1
         print('Starting training....{}/{}'.format(epoch + 1, num_epochs))
         loss_sub_list = []
         start = time.time()
         model.train()
-        i=0
+        i = 0
         epoch_loss = 0
         for images, targets in tr_set:
-            i+=1
+            i += 1
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -244,9 +247,11 @@ def train(tr_set, vd_set, model, config, device):
         end = time.time()
 
         epoch_loss = np.mean(loss_sub_list)
+        loss_list.append(epoch_loss)
 
         # After each epoch, test your model on the validation (development) set.
         dev_mse = dev(dv_set, model, device)
+        dev_list.append(dev_mse)
         if dev_mse < min_mse:
             min_mse = dev_mse
             torch.save(model.state_dict(), 'checkpoint/model.pth')
@@ -265,26 +270,38 @@ def train(tr_set, vd_set, model, config, device):
         #     min_mse = epoch_loss
         # loss_list.append(epoch_loss)
         # print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
+    # x=list(range(len(loss_list)))
+    x = np.arange(len(loss_list))
+    plt.plot(loss_list, 'r', label='training loss')
+    plt.plot(dev_list, 'b', label='validation loss')
+    plt.title('Loss Curve')
+    plt.legend(loc="lower left")
+    plt.xlim(1, len(loss_list))
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.savefig("output/loss.png")
+
 
 # validation
 def dev(dv_set, model, device):
     # model.eval()                                # set model to evalutation mode
     total_loss = 0
     loss_sub_list = []
-    for imgs, annotations in dv_set:                         # iterate through the dataloader
+    for imgs, annotations in dv_set:  # iterate through the dataloader
         imgs = list(img.to(device) for img in imgs)
         annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
         # x, y = x.to(device), y.to(device)       # move data to device (cpu/cuda)
-        with torch.no_grad():                   # disable gradient calculation
+        with torch.no_grad():  # disable gradient calculation
             # pred = model(imgs)                     # forward pass (compute output)
             mse_loss = model(imgs, annotations)  # compute loss
         # total_loss += mse_loss.detach().cpu().item() * len(imgs)  # accumulate loss
         total_loss = sum(loss for loss in mse_loss.values())
         loss_value = total_loss.item()
         loss_sub_list.append(loss_value)
-    total_loss = np.mean(loss_sub_list)              # compute averaged loss
+    total_loss = np.mean(loss_sub_list)  # compute averaged loss
 
     return total_loss
+
 
 # # Prediction
 
@@ -332,7 +349,7 @@ def plot_img(img, predict, annotation):
                                  facecolor='none')
         ax[1].add_patch(rect)
 
-    #plt.savefig()
+    # plt.savefig()
     # plt.show()
 
 
@@ -395,7 +412,7 @@ if __name__ == '__main__':
         'momentum': 0.9,  # momentum for SGD
         'weight_decay': 0.0005,
         # },
-        'early_stop': 5,  # early stopping epochs (the number epochs since your model's last improvement)
+        'early_stop': 10,  # early stopping epochs (the number epochs since your model's last improvement)
         'dir_path': '../data_set/face_mask_detection/IMAGES',
         'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
@@ -420,4 +437,3 @@ if __name__ == '__main__':
     # tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
     model = Faster_RCNN()
     train(tr_set, dv_set, model, config, device)
-
