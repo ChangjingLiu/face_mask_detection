@@ -1,6 +1,7 @@
 import sys
 import unittest
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
@@ -114,4 +115,14 @@ if __name__ == "__main__":
                 l_pre = [a, pre_labels[i], pre_scores[i], xmin, ymin, xmax, ymax]
                 pred_bboxes.append(l_pre)
             a + 1
-    mean_average_precision(pred_bboxes, true_boxes, iou_threshold=0.5,box_format="corners", num_classes=3)
+    precisions,recalls,ap = mean_average_precision(pred_bboxes, true_boxes, iou_threshold=0.5,box_format="corners", num_classes=3)
+    plt.plot(recalls,precisions,'b',label='ap=%f'%ap)
+    plt.title('precision-recall curve')
+    plt.legend(loc="lower left")
+    plt.xlim(-0.1, 1.1)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.savefig("output/ap.png")
+    # print(precisions)
+    # print(recalls)
+    # print(ap)

@@ -270,6 +270,7 @@ def train(tr_set, vd_set, model, config, device):
 def dev(dv_set, model, device):
     # model.eval()                                # set model to evalutation mode
     total_loss = 0
+    loss_sub_list = []
     for imgs, annotations in dv_set:                         # iterate through the dataloader
         imgs = list(img.to(device) for img in imgs)
         annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
@@ -280,7 +281,8 @@ def dev(dv_set, model, device):
         # total_loss += mse_loss.detach().cpu().item() * len(imgs)  # accumulate loss
         total_loss = sum(loss for loss in mse_loss.values())
         loss_value = total_loss.item()
-    total_loss = total_loss / len(dv_set.dataset)              # compute averaged loss
+        loss_sub_list.append(loss_value)
+    total_loss = np.mean(loss_sub_list)              # compute averaged loss
 
     return total_loss
 

@@ -8,7 +8,6 @@ from six.moves import zip
 import numpy as np
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from tqdm import tqdm
 
 def get_device():
     ''' Get device (if GPU is available, use GPU) '''
@@ -108,21 +107,26 @@ def calc_detection_voc_prec_rec(
     match = defaultdict(list)
 
     for pred_bbox, pred_label, pred_score, gt_bbox, gt_label, gt_difficult in \
-            (
+            zip(
                 pred_bboxes, pred_labels, pred_scores,
                 gt_bboxes, gt_labels, gt_difficults):
         """先对每个图片进行循环"""
 
         if gt_difficult is None:
             gt_difficult = np.zeros(gt_bbox.shape[0], dtype=bool)
-
-        for l in np.unique(np.concatenate((pred_label, gt_label)).astype(int)):
+        lista =torch.tensor([1,2])
+        # lista = np.unique(np.concatenate((pred_label, gt_label)).astype(int))
+        for l in lista:
             """循环每个类别"""
             pred_mask_l = pred_label == l
             pred_bbox_l = pred_bbox[pred_mask_l]
             pred_score_l = pred_score[pred_mask_l]
             # sort by score
-            order = pred_score_l.argsort()[::-1]
+            # order = pred_score_l.argsort()[::-1]
+            a= pred_score_l
+            a, order = a.sort(descending=True)
+            # b, b_index = a.sort()
+
             pred_bbox_l = pred_bbox_l[order]
             pred_score_l = pred_score_l[order]
 
@@ -140,15 +144,18 @@ def calc_detection_voc_prec_rec(
                 continue
 
             # VOC evaluation follows integer typed bounding boxes.
-            pred_bbox_l = pred_bbox_l.copy()
+            pred_bbox_l = pred_bbox_l.clone()
             pred_bbox_l[:, 2:] += 1
-            gt_bbox_l = gt_bbox_l.copy()
+            gt_bbox_l = gt_bbox_l.clone()
             gt_bbox_l[:, 2:] += 1
 
-            iou = IOU(pred_bbox_l, gt_bbox_l)  # 对于每个图片，类别正确 才开始计算iou，iou>阈值 才说明正确
-            gt_index = iou.argmax(axis=1)
+            iou = ca_iou(pred_bbox_l, gt_bbox_l)  # 对于每个图片，类别正确 才开始计算iou，iou>阈值 才说明正确
+            gt_index = (iou.argmax(axis=0))
             # set -1 if there is no matching ground truth
-            gt_index[iou.max(axis=1) < iou_thresh] = -1
+            for index in gt_index:
+                if iou[index]<iou_thresh:
+                    gt_index[index]=-1
+            # gt_index[iou.max(axis=0) < iou_thresh] = -1
             del iou
 
             selec = np.zeros(gt_bbox_l.shape[0], dtype=bool)
@@ -240,6 +247,8 @@ def IOU(bbox, gt):
     :param gt: ground truth
     :return: iou = intersection / union
     """
+    # bbox = bbox_[0]
+    # gt = gt_[0]
     min_x = max(bbox[0], gt[0])
     min_y = max(bbox[1], gt[1])
     max_x = min(bbox[2], gt[2])
@@ -254,6 +263,13 @@ def IOU(bbox, gt):
     union = bbox_area + gt_area - inters
     overlaps = inters / union
     return overlaps
+
+def ca_iou(bbox_l, gt_l):
+    list=[]
+    for i in range(len(bbox_l)):
+        list.append(IOU(bbox_l[i],gt_l[i]))
+    ans_list=np.array(list)
+    return ans_list
 
 if __name__ =='__main__':
     config = {
@@ -282,6 +298,7 @@ if __name__ =='__main__':
 
     # tr_set = prep_dataloader(train_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
     tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
+
 
     result = eval(tt_set, model, test_num=10000)
     print(result)

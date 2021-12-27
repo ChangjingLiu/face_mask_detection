@@ -5,7 +5,7 @@ from iou import intersection_over_union
 
 
 def mean_average_precision(
-        pred_boxes, true_boxes, iou_threshold=0.5, box_format="midpoint", num_classes=20
+        pred_boxes, true_boxes, iou_threshold=0.5, box_format="corners", num_classes=20
 ):
     """
     Calculates mean average precision
@@ -108,5 +108,6 @@ def mean_average_precision(
         recalls = torch.cat((torch.tensor([0]), recalls))
         # torch.trapz for numerical integration
         average_precisions.append(torch.trapz(precisions, recalls))
+        ap = sum(average_precisions) / len(average_precisions)
 
-    return sum(average_precisions) / len(average_precisions)
+    return precisions,recalls,ap
