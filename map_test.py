@@ -61,6 +61,33 @@ def parse(predict, annotation):
             continue
         xmin, ymin, xmax, ymax = pre_boxs[i]
 
+def get_map(set):
+    with torch.no_grad():
+        a = 0
+        for imgs, annotations in set:
+            imgs = list(img.to(device) for img in imgs)
+            annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
+            preds = model(imgs)
+            annotation=annotations[0]
+            predict=preds[0]
+
+            anno_boxs = annotation["boxes"]
+            anno_labels = annotation["labels"]
+            for i in range(len(anno_boxs)):
+                xmin, ymin, xmax, ymax = anno_boxs[i]
+                l_true =[a, anno_labels[i], 1,xmin, ymin, xmax, ymax]
+                true_boxes.append(l_true)
+
+            pre_boxs = predict["boxes"]
+            pre_labels = predict["labels"]
+            pre_scores = predict["scores"]
+            for i in range(len(pre_boxs)):
+                xmin, ymin, xmax, ymax = pre_boxs[i]
+                l_pre = [a, pre_labels[i], pre_scores[i], xmin, ymin, xmax, ymax]
+                pred_bboxes.append(l_pre)
+            a + 1
+    precisions,recalls,ap = mean_average_precision(pred_bboxes, true_boxes, iou_threshold=0.5,box_format="corners", num_classes=3)
+
 if __name__ == "__main__":
     print("Running Mean Average Precisions Tests:")
     config = {
