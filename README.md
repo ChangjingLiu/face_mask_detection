@@ -46,14 +46,25 @@ List the ready features here:
 ## Setup
 What are the project requirements/dependencies? Where are they listed? A requirements.txt or a Pipfile.lock file perhaps? Where is it located?
 
+`matplotlib==3.3.4  \
+numpy==1.19.2 \
+pandas==1.1.5 \
+Pillow==9.2.0 \
+requests==2.26.0 \
+scikit_learn==1.1.1 \
+torch==1.9.0 \
+torchvision==0.10.0
+`
+
 Proceed to describe how to install / setup one's local environment / get started with the project.
+
 
 
 ## Usage
 How does one go about using it?
 Provide various use cases and code examples here.
 
-`write-your-code-here`
+`face-mask-detection-faster-r-cnn-pytorch.py`
 
 
 ## Project Status
