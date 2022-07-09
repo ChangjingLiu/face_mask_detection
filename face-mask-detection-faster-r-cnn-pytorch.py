@@ -28,14 +28,6 @@ import time
 import requests
 
 
-# In[2]:
-
-
-# ### Create 2 helper functions
-# 1. one for read the data from xml file
-# 2. the second function is used for drawing bounding boxes.
-
-# In[3]:
 def get_device():
     ''' Get device (if GPU is available, use GPU) '''
     return 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -94,33 +86,6 @@ def draw_boxes(img, boxes, labels, thickness=1):
         cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), color, thickness)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-
-# - After createing helper function, lets have a look on the image.
-
-# In[4]:
-
-
-# # Get the image randomly
-# image_name = file_list[random.randint(0,len(file_list))] # random select an image
-#
-# # Get the bbox and label
-# bbox, labels  = read_annot(image_name, xml_path)
-#
-# #draw bounding boxes on the image
-# img = draw_boxes(plt.imread(os.path.join(dir_path,image_name)), bbox,labels)
-# img = img.astype(int)
-# # display the image
-# fig, ax = plt.subplots(1,1,figsize=(10,10))
-# plt.axis('off')
-# ax.imshow(img)
-
-
-# - Now lets create our custom dataset
-# ## Prepare the custom dataset
-
-# In[5]:
-
-
 class image_dataset(Dataset):
     def __init__(self, image_list, image_dir, xml_dir):
         self.image_list = image_list
@@ -177,16 +142,6 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
     return mask_loader
 
 
-# - Setting up the gpu, model, optimizer, etc..
-
-# In[7]:
-
-
-# Setting up GPU device
-
-
-# In[8]:
-
 
 # Setting up the model
 def Faster_RCNN():
@@ -200,12 +155,6 @@ def Faster_RCNN():
 
     model = model.to(device)
     return model
-
-
-# In[9]:
-
-
-# Setting the optimizer, lr_scheduler, epochs
 
 
 # training
@@ -350,55 +299,6 @@ def plot_img(img, predict, annotation):
                                  facecolor='none')
         ax[1].add_patch(rect)
 
-    # plt.savefig()
-    # plt.show()
-
-
-# - Lets pick an image from the training set and compare the prediction with ground truth
-
-# In[ ]:
-
-
-# #idx = random.randint(1,len(file_list))
-# idx = 210
-# test_img = Image.open(os.path.join(dir_path,file_list[idx])).convert('RGB')
-#
-# # Prediction
-# test_img, test_boxes, test_labels = single_img_predict(test_img)
-# test_output = draw_boxes(test_img, test_boxes,test_labels)
-#
-# # Draw the bounding box of ground truth
-# bbox, labels  = read_annot(file_list[idx], xml_path)
-# #draw bounding boxes on the image
-# gt_output = draw_boxes(test_img, bbox,labels)
-#
-# # Display the result
-# fig, (ax1,ax2) = plt.subplots(1,2,figsize=(15,6))
-# ax1.imshow(test_output)
-# ax1.set_xlabel('Prediction')
-# ax2.imshow(gt_output)
-# ax2.set_xlabel('Ground Truth')
-# plt.show()
-
-
-# - The model has detected one more face (the Buddha).
-
-# ### Now try the detector on image from internet
-
-# In[ ]:
-
-
-# url = 'https://assets.weforum.org/article/image/yv_SffigotevWgXLOTBsbybWzDlztGjjJM1mDWSqV8c.jpg'
-# test_img = Image.open(requests.get(url, stream=True).raw).convert('RGB')
-#
-# test_img, test_boxes, test_labels = single_img_predict(test_img)
-#
-# # The image size is so large, so we increase the thickness of the bounding box
-# test_output = draw_boxes(test_img, test_boxes,test_labels, thickness=20)
-#
-# plt.axis('off')
-# plt.imshow(test_output)
-
 
 if __name__ == '__main__':
     device = get_device()
@@ -414,8 +314,8 @@ if __name__ == '__main__':
         'weight_decay': 0.0005,
         # },
         'early_stop': 10,  # early stopping epochs (the number epochs since your model's last improvement)
-        'dir_path': '../data_set/face_mask_detection/IMAGES',
-        'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
+        'dir_path': './data_set/face_mask_detection/IMAGES',
+        'xml_path': './data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
     }
     file_list = os.listdir(config['dir_path'])
