@@ -1,27 +1,24 @@
 # Face Mask Detection with Faster R-CNN Network
-> This project implement Faster R-CNN to detect the face area and 
-classify whether they wear the face mask.
-> Live demo [_here_](https://www.example.com). <!-- If you have the project hosted somewhere, include the link here. -->
+> This is the final project of the Vision Measurement Course in SJTU.\
+> This project implements Faster R-CNN to detect the face area and 
+classify whether the people wear the face mask.
+<!-- Live demo [_here_](https://www.example.com). -->
+<!-- If you have the project hosted somewhere, include the link here. -->
 
 ## Table of Contents
 * [General Info](#general-information)
-* [Technologies Used](#technologies-used)
-* [Features](#features)
 * [Screenshots](#screenshots)
 * [Setup](#setup)
-* [Usage](#usage)
-* [Project Status](#project-status)
-* [Room for Improvement](#room-for-improvement)
-* [Acknowledgements](#acknowledgements)
+* [Dataset](#dataset)
+* [Train](#train)
+* [Test](#test)
 * [Contact](#contact)
 <!-- * [License](#license) -->
 
 
 ## General Information
-- Provide general information about your project here.
-- What problem does it (intend to) solve?
-- What is the purpose of your project?
-- Why did you undertake it?
+This project implements pretrained Faster R-CNN to detect the face area and 
+classify whether the people wear the face mask.
 <!-- You don't have to answer all the questions - just the ones relevant to your project. -->
 
 
@@ -46,12 +43,22 @@ Please install related libraries before running this code:
 
 `  pip install -r requirements.txt`
 
+## Dataset
+The face mask can be download in Kaggle:
+
+[Face Mask Detection](https://www.kaggle.com/datasets/andrewmvd/face-mask-detection?datasetId=667889&searchQuery=pytorch)
 
 
-## Usage
+
+## Train
 To train the model, run the following file:
 
 `face-mask-detection-faster-r-cnn-pytorch.py`
+
+## Test
+To test the model, run the following file:
+
+`map_test.py`
 
 
 <!-- Optional -->
