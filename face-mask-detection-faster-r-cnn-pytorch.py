@@ -4,9 +4,6 @@
 # # Face mask detection (Faster R-CNN) (Pytorch)
 # - Simple fine-tuning with Faster R-CNN
 
-# In[1]:
-
-
 # import all the tools we need
 import sys
 import urllib
@@ -97,32 +94,6 @@ def draw_boxes(img, boxes, labels, thickness=1):
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-# - After createing helper function, lets have a look on the image.
-
-# In[4]:
-
-
-# # Get the image randomly
-# image_name = file_list[random.randint(0,len(file_list))] # random select an image
-#
-# # Get the bbox and label
-# bbox, labels  = read_annot(image_name, xml_path)
-#
-# #draw bounding boxes on the image
-# img = draw_boxes(plt.imread(os.path.join(dir_path,image_name)), bbox,labels)
-# img = img.astype(int)
-# # display the image
-# fig, ax = plt.subplots(1,1,figsize=(10,10))
-# plt.axis('off')
-# ax.imshow(img)
-
-
-# - Now lets create our custom dataset
-# ## Prepare the custom dataset
-
-# In[5]:
-
-
 class image_dataset(Dataset):
     def __init__(self, image_list, image_dir, xml_dir):
         self.image_list = image_list
@@ -179,17 +150,6 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
     return mask_loader
 
 
-# - Setting up the gpu, model, optimizer, etc..
-
-# In[7]:
-
-
-# Setting up GPU device
-
-
-# In[8]:
-
-
 # Setting up the model
 def Faster_RCNN():
     num_classes = 3  # background, without_mask, with_mask
@@ -203,13 +163,6 @@ def Faster_RCNN():
 
     model = model.to(device)
     return model
-
-
-# In[9]:
-
-
-# Setting the optimizer, lr_scheduler, epochs
-
 
 # training
 def train(tr_set, dev_set, model, config, device):
@@ -256,8 +209,6 @@ def train(tr_set, dev_set, model, config, device):
         loss_list.append(epoch_loss)
 
         # After each epoch, test your model on the validation (development) set.
-        # dev_mse = dev(dv_set, model, device)
-        # dev_list.append(dev_mse)
         dev_ap = get_map(dev_set)
         tr_ap = get_map(tr_set)
         dev_list.append(dev_ap)
@@ -272,25 +223,7 @@ def train(tr_set, dev_set, model, config, device):
         if early_stop_cnt > config['early_stop']:
             # Stop training if your model stops improving for "config['early_stop']" epochs.
             break
-        # if epoch_loss < min_mse:
-        #     min_mse = epoch_loss
-        #     torch.save(model.state_dict(), 'checkpoint/model.pth')
-        #     print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(min_mse, end - start))
-        #     early_stop_cnt = 0
-        # else:
-        #     early_stop_cnt += 1
-        # if early_stop_cnt > config['early_stop']:
-        #     # Stop training if your model stops improving for "config['early_stop']" epochs.
-        #     break
-        # print the loss of epoch and save
-        # epoch_loss = np.mean(loss_sub_list)
-        # if epoch_loss < min_mse:
-        #     print("saving model")
-        #     torch.save(model.state_dict(), 'checkpoint/model.pth')
-        #     min_mse = epoch_loss
-        # loss_list.append(epoch_loss)
-        # print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(epoch_loss, end - start))
-    # x=list(range(len(loss_list)))
+
     x = np.arange(len(loss_list))
     plt.plot(loss_list, 'r', label='training loss')
     # plt.plot(dev_list, 'b', label='validation loss')
@@ -461,8 +394,8 @@ if __name__ == '__main__':
         'weight_decay': 0.0005,
         # },
         'early_stop': 5,  # early stopping epochs (the number epochs since your model's last improvement)
-        'dir_path': '../data_set/face_mask_detection/IMAGES',
-        'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
+        'dir_path': './data_set/face_mask_detection/IMAGES',
+        'xml_path': './data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
     }
     file_list = os.listdir(config['dir_path'])
