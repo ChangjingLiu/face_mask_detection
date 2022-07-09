@@ -1,5 +1,6 @@
-# Face mask detection with FastRCNN
-> Outline a brief description of your project.
+# Face Mask Detection with Faster R-CNN Network
+> This project implement Faster R-CNN to detect the face area and 
+classify whether they wear the face mask.
 > Live demo [_here_](https://www.example.com). <!-- If you have the project hosted somewhere, include the link here. -->
 
 ## Table of Contents
