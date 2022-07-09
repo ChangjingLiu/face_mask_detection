@@ -8,6 +8,7 @@
 
 
 # import all the tools we need
+import sys
 import urllib
 import pandas as pd
 import numpy as np
@@ -26,8 +27,17 @@ import random
 import xml.etree.ElementTree as ET
 import time
 import requests
+sys.path.append("utils")
+from utils.mean_avg_precision import mean_average_precision
+
+# In[2]:
 
 
+# ### Create 2 helper functions
+# 1. one for read the data from xml file
+# 2. the second function is used for drawing bounding boxes.
+
+# In[3]:
 def get_device():
     ''' Get device (if GPU is available, use GPU) '''
     return 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -86,6 +96,33 @@ def draw_boxes(img, boxes, labels, thickness=1):
         cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), color, thickness)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+
+# - After createing helper function, lets have a look on the image.
+
+# In[4]:
+
+
+# # Get the image randomly
+# image_name = file_list[random.randint(0,len(file_list))] # random select an image
+#
+# # Get the bbox and label
+# bbox, labels  = read_annot(image_name, xml_path)
+#
+# #draw bounding boxes on the image
+# img = draw_boxes(plt.imread(os.path.join(dir_path,image_name)), bbox,labels)
+# img = img.astype(int)
+# # display the image
+# fig, ax = plt.subplots(1,1,figsize=(10,10))
+# plt.axis('off')
+# ax.imshow(img)
+
+
+# - Now lets create our custom dataset
+# ## Prepare the custom dataset
+
+# In[5]:
+
+
 class image_dataset(Dataset):
     def __init__(self, image_list, image_dir, xml_dir):
         self.image_list = image_list
@@ -142,14 +179,25 @@ def prep_dataloader(mask_dataset, xml_path, mode, batch_size, n_jobs):
     return mask_loader
 
 
+# - Setting up the gpu, model, optimizer, etc..
+
+# In[7]:
+
+
+# Setting up GPU device
+
+
+# In[8]:
+
 
 # Setting up the model
 def Faster_RCNN():
     num_classes = 3  # background, without_mask, with_mask
 
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
-    pre = torch.load('checkpoint/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth')
-    model.load_state_dict(pre)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    # model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=True)
+    # pre = torch.load('checkpoint/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth')
+    # model.load_state_dict(pre)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
@@ -157,8 +205,14 @@ def Faster_RCNN():
     return model
 
 
+# In[9]:
+
+
+# Setting the optimizer, lr_scheduler, epochs
+
+
 # training
-def train(tr_set, vd_set, model, config, device):
+def train(tr_set, dev_set, model, config, device):
     num_epochs = config['num_epochs']
 
     # setup optimizer
@@ -167,9 +221,11 @@ def train(tr_set, vd_set, model, config, device):
 
     # Main training function
     loss_list = []
+    tr_list = []
     dev_list = []
     early_stop_cnt = 0
     min_mse = 1000
+    max_ap = 0
     cnt_epoch = 0
     for epoch in range(num_epochs):
         cnt_epoch = epoch + 1
@@ -202,7 +258,11 @@ def train(tr_set, vd_set, model, config, device):
         # After each epoch, test your model on the validation (development) set.
         # dev_mse = dev(dv_set, model, device)
         # dev_list.append(dev_mse)
-        if epoch_loss < min_mse:
+        dev_ap = get_map(dev_set)
+        tr_ap = get_map(tr_set)
+        dev_list.append(dev_ap)
+        tr_list.append(tr_ap)
+        if(dev_ap<tr_ap):
             min_mse = epoch_loss
             torch.save(model.state_dict(), 'checkpoint/model.pth')
             print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(min_mse, end - start))
@@ -212,6 +272,16 @@ def train(tr_set, vd_set, model, config, device):
         if early_stop_cnt > config['early_stop']:
             # Stop training if your model stops improving for "config['early_stop']" epochs.
             break
+        # if epoch_loss < min_mse:
+        #     min_mse = epoch_loss
+        #     torch.save(model.state_dict(), 'checkpoint/model.pth')
+        #     print('Epoch loss: {:.3f} , time used: ({:.1f}s)'.format(min_mse, end - start))
+        #     early_stop_cnt = 0
+        # else:
+        #     early_stop_cnt += 1
+        # if early_stop_cnt > config['early_stop']:
+        #     # Stop training if your model stops improving for "config['early_stop']" epochs.
+        #     break
         # print the loss of epoch and save
         # epoch_loss = np.mean(loss_sub_list)
         # if epoch_loss < min_mse:
@@ -223,7 +293,7 @@ def train(tr_set, vd_set, model, config, device):
     # x=list(range(len(loss_list)))
     x = np.arange(len(loss_list))
     plt.plot(loss_list, 'r', label='training loss')
-    plt.plot(dev_list, 'b', label='validation loss')
+    # plt.plot(dev_list, 'b', label='validation loss')
     plt.title('Loss Curve')
     plt.legend(loc="lower left")
     plt.xlim(1, len(loss_list))
@@ -231,6 +301,15 @@ def train(tr_set, vd_set, model, config, device):
     plt.ylabel('Loss')
     plt.savefig("output/loss.png")
 
+    plt.cla()
+    plt.plot(dev_list, 'r', label='validation loss')
+    plt.plot(tr_list, 'g', label='training loss')
+    plt.title('Accuracy Curve')
+    plt.legend(loc="lower left")
+    plt.xlim(1, len(loss_list))
+    plt.xlabel('Epoch')
+    plt.ylabel('mAP')
+    plt.savefig("output/Accuracy.png")
 
 # validation
 def dev(dv_set, model, device):
@@ -299,6 +378,74 @@ def plot_img(img, predict, annotation):
                                  facecolor='none')
         ax[1].add_patch(rect)
 
+    # plt.savefig()
+    # plt.show()
+
+def get_map(set):
+    model.eval()
+    with torch.no_grad():
+        a = 0
+        for imgs, annotations in set:
+            imgs = list(img.to(device) for img in imgs)
+            annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
+            preds = model(imgs)
+            annotation=annotations[0]
+            predict=preds[0]
+            true_boxes=[]
+            pred_bboxes=[]
+            anno_boxs = annotation["boxes"]
+            anno_labels = annotation["labels"]
+            for i in range(len(anno_boxs)):
+                xmin, ymin, xmax, ymax = anno_boxs[i]
+                l_true =[a, anno_labels[i], 1,xmin, ymin, xmax, ymax]
+                true_boxes.append(l_true)
+
+            pre_boxs = predict["boxes"]
+            pre_labels = predict["labels"]
+            pre_scores = predict["scores"]
+            for i in range(len(pre_boxs)):
+                xmin, ymin, xmax, ymax = pre_boxs[i]
+                l_pre = [a, pre_labels[i], pre_scores[i], xmin, ymin, xmax, ymax]
+                pred_bboxes.append(l_pre)
+            a + 1
+    precisions,recalls,ap = mean_average_precision(pred_bboxes, true_boxes, iou_threshold=0.5,box_format="corners", num_classes=3)
+    return ap
+def test(tt_set):
+    pred_bboxes = []
+    true_boxes = []
+    with torch.no_grad():
+        a = 0
+        for imgs, annotations in tt_set:
+            imgs = list(img.to(device) for img in imgs)
+            annotations = [{k: v.to(device) for k, v in t.items()} for t in annotations]
+            preds = model(imgs)
+            annotation = annotations[0]
+            predict = preds[0]
+
+            anno_boxs = annotation["boxes"]
+            anno_labels = annotation["labels"]
+            for i in range(len(anno_boxs)):
+                xmin, ymin, xmax, ymax = anno_boxs[i]
+                l_true = [a, anno_labels[i], 1, xmin, ymin, xmax, ymax]
+                true_boxes.append(l_true)
+
+            pre_boxs = predict["boxes"]
+            pre_labels = predict["labels"]
+            pre_scores = predict["scores"]
+            for i in range(len(pre_boxs)):
+                xmin, ymin, xmax, ymax = pre_boxs[i]
+                l_pre = [a, pre_labels[i], pre_scores[i], xmin, ymin, xmax, ymax]
+                pred_bboxes.append(l_pre)
+            a + 1
+    precisions, recalls, ap = mean_average_precision(pred_bboxes, true_boxes, iou_threshold=0.5, box_format="corners",
+                                                     num_classes=3)
+    plt.plot(recalls, precisions, 'b', label='ap=%f' % ap)
+    plt.title('precision-recall curve')
+    plt.legend(loc="lower left")
+    plt.xlim(-0.1, 1.1)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.savefig("output/ap.png")
 
 if __name__ == '__main__':
     device = get_device()
@@ -313,9 +460,9 @@ if __name__ == '__main__':
         'momentum': 0.9,  # momentum for SGD
         'weight_decay': 0.0005,
         # },
-        'early_stop': 10,  # early stopping epochs (the number epochs since your model's last improvement)
-        'dir_path': './data_set/face_mask_detection/IMAGES',
-        'xml_path': './data_set/face_mask_detection/ANNOTATIONS',
+        'early_stop': 5,  # early stopping epochs (the number epochs since your model's last improvement)
+        'dir_path': '../data_set/face_mask_detection/IMAGES',
+        'xml_path': '../data_set/face_mask_detection/ANNOTATIONS',
         'save_path': 'models/model.pth'  # your model will be saved here
     }
     file_list = os.listdir(config['dir_path'])
@@ -326,7 +473,7 @@ if __name__ == '__main__':
     train_size = int(0.6 * len(full_dataset))  # 0.6
     valid_size = int(0.2 * len(full_dataset))  # 0.2
     test_size = len(full_dataset) - train_size - valid_size  # 0.2
-    train_set, valid_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, valid_size, test_size])
+    train_set, valid_set, test_set = torch.utils.data.random_split(full_dataset, [train_size, valid_size,test_size])
     np.save('checkpoint/train_set.npy', train_set)
     np.save('checkpoint/test_set.npy', test_set)
     # print(type(train_set))
@@ -335,6 +482,7 @@ if __name__ == '__main__':
 
     tr_set = prep_dataloader(train_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
     dv_set = prep_dataloader(valid_set, config['xml_path'], 'train', config['batch_size'], config['n_jobs'])
-    # tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
+    tt_set = prep_dataloader(test_set, config['xml_path'], 'test', config['batch_size'], config['n_jobs'])
     model = Faster_RCNN()
     train(tr_set, dv_set, model, config, device)
+    test(tt_set)
